@@ -5,6 +5,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Subject } from "../models/subject.model.js";
 import { FeePayment } from "../models/feepayment.model.js";
+import { uploadFileOnCloudinary } from "../utils/cloudinary.utils.js";
 
 const generateAccessToken_RefreshToken = async function (userId) {
   try {
@@ -35,13 +36,24 @@ export const REGISTER_STUDENT = async (req, res) => {
     parentContact,
     parentName,
     gender,
+    aadharId, // Fixed field names
+    whatsappNumber,
+    dob,
+    motherName,
+    motherAadhar,
+    fatherName,
+    fatherAadhar,
+    studentPan,
+    phoneNumber,
+    address,
   } = req.body;
 
-  // start a MongoDB session
+  // Start a MongoDB session
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+    // Check if student already exists
     const existingStudent = await Student.findOne({ email });
     if (existingStudent) {
       throw new ApiError(400, "Student already exists");
@@ -53,10 +65,22 @@ export const REGISTER_STUDENT = async (req, res) => {
       throw new ApiError(400, "Invalid class assigned to student");
     }
 
+    // Handle profile photo (optional)
+    let profilePhotoUrl = null;
+    if (req.file?.path) {
+      const profilePhoto = await uploadFileOnCloudinary(req.file.path);
+      if (profilePhoto) {
+        profilePhotoUrl = profilePhoto.secure_url;
+      }
+      // If upload fails, we don't throw error since profile photo is optional
+    }
+
+    // Create the student
     const newStudent = await Student.create(
       [
         {
           name,
+          profilePhoto: profilePhotoUrl, // will be null if not provided or upload failed
           email,
           password,
           studentClass,
@@ -65,36 +89,46 @@ export const REGISTER_STUDENT = async (req, res) => {
           parentContact,
           parentName,
           gender,
+          aadharId,
+          whatsappNumber,
+          dob,
+          motherName,
+          motherAadhar,
+          fatherName,
+          fatherAadhar,
+          studentPan,
+          phoneNumber,
+          address,
         },
       ],
       { session }
     );
 
-    // check if the student is successfully created
+    // Check if the student is successfully created
     const createdStudent = await Student.findById(newStudent[0]._id)
       .populate({
         path: "studentClass",
         select: "className section classTeacher",
         populate: {
           path: "classTeacher",
-          select: "name email", // Select only necessary fields from Teacher
+          select: "name email",
         },
       })
       .select("-password")
       .session(session);
+
     if (!createdStudent) {
       throw new ApiError(500, "Uh oh! Student registration failed");
     }
 
-    // Add the student's ID to the class's students array, to maitain data consistency between student and class model
+    // Add the student's ID to the class's students array
     classExists.students.push(newStudent[0]._id);
-    await classExists.save();
+    await classExists.save({ session });
 
     // Commit the transaction
     await session.commitTransaction();
     session.endSession();
 
-    // Respond with success message and student details (excluding password)
     return res
       .status(201)
       .json(
@@ -102,10 +136,24 @@ export const REGISTER_STUDENT = async (req, res) => {
       );
   } catch (error) {
     // Abort the transaction in case of an error
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     session.endSession();
 
-    // Handle the error
+    // mongodb duplicate key error code is 11000, but http status code range is in between [1xx, 5xx]. Thus we need to handle it separately
+    if (error.code === 11000) {
+      let message = "Duplicate key error";
+      if (error.keyValue) {
+        const field = Object.keys(error.keyValue)[0];
+        message = `Duplicate key error: A student with this ${field} already exists`;
+      }
+      res.status(409).json({
+        success: false,
+        message,
+      });
+    }
+
     res.status(error.code || 500).json({
       success: false,
       message: error.message,

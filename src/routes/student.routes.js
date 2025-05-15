@@ -15,6 +15,7 @@ import {
 } from "../controllers/student.controller.js";
 import { VERIFY_TOKEN } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { upload } from "../../../kaltlicherra_backend_v2/school-backend/src/middlewares/multer.middleware.js";
 const studentRouter = Router();
 
 // Route for student registration
@@ -22,6 +23,7 @@ studentRouter.post(
   "/register",
   VERIFY_TOKEN,
   authorize(["principal"]),
+  upload.single("profilePhoto"),
   REGISTER_STUDENT
 );
 studentRouter.post("/login", LOGIN_STUDENT);

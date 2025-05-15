@@ -6,51 +6,77 @@ const studentSchema = new Schema(
   {
     name: {
       type: String,
-      required: [true, "Student name is required while registrating a student"],
+      required: [true, "Student name is required while registering a student"],
       maxLength: [
         100,
-        "Student name is too long! Maximum character allowed is 100",
+        "Student name is too long! Maximum characters allowed is 100",
       ],
+    },
+    profilePhoto: {
+      type: String,
     },
     email: {
       type: String,
-      required: true,
       unique: true,
-      validate: {
-        validator: function (email) {
-          // Regular expression for basic email format validation
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          return emailRegex.test(email); // Return true if matched, otherwise false
-        },
-        message: (props) => `${props.value} is not a valid email address!`,
-      },
     },
     password: {
       type: String,
-      required: [true, "Password is required while registrating a student"],
+      required: [true, "Password is required while registering a student"],
       minlength: [6, "Password must be at least 6 characters long"],
     },
     gender: {
       type: String,
-      required: [true, "Gender is required while registrating a student"],
+      required: [true, "Gender is required while registering a student"],
       enum: ["male", "female", "other"],
+    },
+    dob: {
+      type: Date,
+      required: [true, "Date of Birth is required"],
+    },
+    studentPan: {
+      type: String,
+      // unique: [true, "student PAN must be unique"],
+    },
+    aadharId: {
+      type: String,
+      // unique: [true, "Student Aadhar ID must be unique"],
+    },
+    motherName: {
+      type: String,
+    },
+    motherAadhar: {
+      type: String,
+    },
+    fatherName: {
+      type: String,
+    },
+    fatherAadhar: {
+      type: String,
+    },
+    address: {
+      type: String,
+    },
+    phoneNumber: {
+      type: String,
+      // unique: [true, "Phone number must be unique"],
+    },
+    whatsappNumber: {
+      type: String,
+      // unique: [true, "WhatsApp number must be unique"],
     },
     studentClass: {
       type: Schema.Types.ObjectId,
       ref: "StudentAcademicClass",
-      required: [true, "Class Id is required while registrating a student"],
-    }, // Reference to Class model
-    // section: { type: String, required: true },
+      required: [true, "Class Id is required while registering a student"],
+    },
     rollNumber: { type: String },
     grade: { type: String },
-    subjects: [{ type: Schema.Types.ObjectId, ref: "Subject" }], // List of subjects the student studies
+    subjects: [{ type: Schema.Types.ObjectId, ref: "Subject" }],
     parentContact: {
       type: String,
-      required: [true, "Parent contact is required while registring a student"],
     },
     parentName: {
       type: String,
-      required: [true, "Parent name is required while registrating a student"],
     },
     role: {
       type: String,
